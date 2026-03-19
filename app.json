@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Last Call",
+    "slug": "last-call",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FF6B2B"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.harith.lastcall",
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "Last Call sends you budget alerts so you never overspend."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FF6B2B"
+      },
+      "package": "com.harith.lastcall"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "scheme": "last-call",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF6B2B",
+          "sounds": []
+        }
+      ],
+      "expo-secure-store",
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "70129bf1-c26d-4246-86ec-ca8ea21dc544"
+      }
+    },
+    "owner": "harithreddy"
+  }
+}
