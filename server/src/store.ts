@@ -125,12 +125,15 @@ export function addAppExpense(id: string, amount: number, merchant: string, time
   save(_store);
 }
 
-/** Deletes an expense by id and recalculates totalSpent. */
+/** Deletes an expense by id and recalculates totalSpent. Resets thresholds if all expenses are gone. */
 export function deleteExpenseById(id: string): boolean {
   const before = (_store.expenses ?? []).length;
   _store.expenses = (_store.expenses ?? []).filter((e) => e.id !== id);
   if (_store.expenses.length === before) return false;
   _store.totalSpent = _store.expenses.reduce((sum, e) => sum + e.amount, 0);
+  if (_store.expenses.length === 0) {
+    _store.firedThresholds = [];
+  }
   save(_store);
   return true;
 }
