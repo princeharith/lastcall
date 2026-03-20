@@ -5,3 +5,7 @@
 expo-env.d.ts
 # @end expo-cli
 node_modules
+.env
+server/data/
+.expo/xcodebuild.log
+.expo/xcodebuild-error.log

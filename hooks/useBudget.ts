@@ -20,6 +20,8 @@ import {
   loadSimulateMode,
   sumCurrentMonth,
   loadTextbeltKey,
+  loadServerUrl,
+  saveExpenses,
 } from '../services/storage';
 import { sendSMS, simulateSMS, buildAlertMessage } from '../services/smsService';
 import { scheduleLocalBudgetAlert } from '../services/notificationService';
@@ -123,19 +125,37 @@ export function useBudget() {
     [],
   );
 
-  /** Silently adds an expense from the server push — no haptics, no SMS */
-  const syncExpense = useCallback(
-    async (expense: Omit<Expense, 'id' | 'timestamp'>) => {
-      const newExpense: Expense = {
-        ...expense,
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        timestamp: Date.now(),
-      };
-      const updated = await appendExpense(newExpense);
-      setExpenses(updated);
-    },
-    [],
-  );
+  // Poll server every 30s — replace local expenses with server's full list
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const poll = async () => {
+      const serverUrl = await loadServerUrl();
+      if (!serverUrl.trim()) return;
+      try {
+        const res = await fetch(`${serverUrl.trim()}/api/budget`);
+        if (!res.ok) return;
+        const data = await res.json() as {
+          expenses: { id: string; amount: number; merchant: string; timestamp: string }[];
+        };
+        const serverExpenses: Expense[] = data.expenses.map((e) => ({
+          id: e.id,
+          amount: e.amount,
+          category: 'other' as const,
+          note: e.merchant,
+          timestamp: new Date(e.timestamp).getTime(),
+        }));
+        await saveExpenses(serverExpenses);
+        setExpenses(serverExpenses);
+      } catch {
+        // silently ignore network errors
+      }
+    };
+
+    poll();
+    const id = setInterval(poll, 30_000);
+    return () => clearInterval(id);
+  }, [isLoaded]);
 
   const addExpense = useCallback(
     async (expense: Omit<Expense, 'id' | 'timestamp'>) => {
@@ -150,6 +170,21 @@ export function useBudget() {
       const updated = await appendExpense(newExpense);
       setExpenses(updated);
 
+      // Sync to server (no SMS — server only alerts on Shortcut transactions)
+      const serverUrl = await loadServerUrl();
+      if (serverUrl.trim()) {
+        fetch(`${serverUrl.trim()}/api/expense`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: newExpense.id,
+            amount: newExpense.amount,
+            merchant: newExpense.note || expense.category,
+            timestamp: new Date(newExpense.timestamp).toISOString(),
+          }),
+        }).catch(() => {});
+      }
+
       const newSpent = sumCurrentMonth(updated);
       await checkAndFireAlerts(newSpent, settings);
     },
@@ -159,6 +194,12 @@ export function useBudget() {
   const removeExpense = useCallback(async (id: string) => {
     const updated = await deleteExpense(id);
     setExpenses(updated);
+
+    // Sync delete to server
+    const serverUrl = await loadServerUrl();
+    if (serverUrl.trim()) {
+      fetch(`${serverUrl.trim()}/api/expense/${id}`, { method: 'DELETE' }).catch(() => {});
+    }
   }, []);
 
   const updateSettings = useCallback(
@@ -201,7 +242,6 @@ export function useBudget() {
     percentUsed,
     isLoaded,
     addExpense,
-    syncExpense,
     removeExpense,
     updateSettings,
     updateTrustedContact,

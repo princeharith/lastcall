@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { sendSMS } from '../services/textbelt';
-import { sendPush } from '../services/push';
 import { getConfig, recordExpense, thresholdMessage } from '../store';
 
 const router = Router();
@@ -26,33 +25,24 @@ router.post('/', async (req: Request, res: Response) => {
     return;
   }
 
-  const { contactPhone, budget, expoPushToken } = getConfig();
+  const { contactPhone, budget } = getConfig();
   if (!contactPhone) {
     res.status(503).json({ error: 'No contact phone configured. Save a trusted contact in the app first.' });
     return;
   }
 
-  // Record expense and get any newly crossed thresholds
-  const newThresholds = recordExpense(numericAmount);
-  const { totalSpent } = getConfig();
-
   const merchantName = merchant?.trim() || 'Unknown merchant';
 
-  // Push to app so it can sync the expense to local state
-  if (expoPushToken) {
-    await sendPush(
-      expoPushToken,
-      `💳 $${numericAmount.toFixed(2)} at ${merchantName}`,
-      'Logged automatically via Apple Pay',
-      { type: 'expense', amount: numericAmount, merchant: merchantName },
-    );
-  }
+  // Record expense and get any newly crossed thresholds
+  const newThresholds = recordExpense(numericAmount, merchantName);
+  const { totalSpent } = getConfig();
 
   // SMS for each newly crossed threshold
   let alertsSent = 0;
   for (const t of newThresholds) {
     const message = thresholdMessage(t, totalSpent ?? 0, budget ?? 0);
-    await sendSMS(contactPhone, message);
+    const smsResult = await sendSMS(contactPhone, message);
+    console.log(`[sms] result:`, smsResult);
     alertsSent++;
   }
   console.log(`[transaction] $${numericAmount.toFixed(2)} at ${merchantName} | total: $${(totalSpent ?? 0).toFixed(2)} | alerts: ${alertsSent}`);

@@ -4,6 +4,8 @@ import cors from 'cors';
 import transactionRouter from './routes/transaction';
 import configRouter from './routes/config';
 import healthRouter from './routes/health';
+import budgetRouter from './routes/budget';
+import expenseRouter from './routes/expense';
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
@@ -14,6 +16,8 @@ app.use(express.json());
 app.use('/api/transaction', transactionRouter);
 app.use('/api/config', configRouter);
 app.use('/api/health', healthRouter);
+app.use('/api/budget', budgetRouter);
+app.use('/api/expense', expenseRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
