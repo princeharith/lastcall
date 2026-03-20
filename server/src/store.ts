@@ -110,8 +110,8 @@ export function recordExpense(amount: number, merchant: string): number[] {
   return newThresholds;
 }
 
-/** Adds an expense from the app (no threshold checking, no SMS). */
-export function addAppExpense(id: string, amount: number, merchant: string, timestamp: string): void {
+/** Adds an expense from the app, checks thresholds, returns newly crossed ones. */
+export function addAppExpense(id: string, amount: number, merchant: string, timestamp: string): number[] {
   const period = currentPeriod();
   if (_store.periodStart !== period) {
     _store.periodStart = period;
@@ -122,7 +122,23 @@ export function addAppExpense(id: string, amount: number, merchant: string, time
   const expense: ServerExpense = { id, amount, merchant, timestamp };
   _store.expenses = [expense, ...(_store.expenses ?? [])];
   _store.totalSpent = (_store.totalSpent ?? 0) + amount;
+
+  const budget = _store.budget ?? 0;
+  const newThresholds: number[] = [];
+  if (budget > 0) {
+    const ratio = (_store.totalSpent ?? 0) / budget;
+    const alreadyFired = _store.firedThresholds ?? [];
+    for (const t of THRESHOLDS) {
+      if (ratio >= t && !alreadyFired.includes(t)) {
+        alreadyFired.push(t);
+        newThresholds.push(t);
+      }
+    }
+    _store.firedThresholds = alreadyFired;
+  }
+
   save(_store);
+  return newThresholds;
 }
 
 /** Deletes an expense by id and recalculates totalSpent. Resets thresholds if all expenses are gone. */

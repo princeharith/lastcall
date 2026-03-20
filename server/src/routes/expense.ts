@@ -1,14 +1,15 @@
 import { Router, Request, Response } from 'express';
-import { addAppExpense, deleteExpenseById } from '../store';
+import { addAppExpense, deleteExpenseById, getConfig, thresholdMessage } from '../store';
+import { sendSMS } from '../services/textbelt';
 
 const router = Router();
 
 /**
  * POST /api/expense
- * Syncs an app-side expense to the server (no SMS triggered).
+ * Syncs an app-side expense to the server, checks thresholds and sends SMS.
  * Body: { id, amount, merchant, timestamp }
  */
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const { id, amount, merchant, timestamp } = req.body as {
     id?: string;
     amount?: number;
@@ -21,8 +22,20 @@ router.post('/', (req: Request, res: Response) => {
     return;
   }
 
-  addAppExpense(id, amount, merchant ?? 'Unknown', timestamp);
-  res.json({ success: true });
+  const newThresholds = addAppExpense(id, amount, merchant ?? 'Unknown', timestamp);
+  const { contactPhone, budget, totalSpent } = getConfig();
+
+  let alertsSent = 0;
+  if (contactPhone && newThresholds.length > 0) {
+    for (const t of newThresholds) {
+      const message = thresholdMessage(t, totalSpent ?? 0, budget ?? 0);
+      const result = await sendSMS(contactPhone, message);
+      console.log(`[sms] result:`, result);
+      alertsSent++;
+    }
+  }
+
+  res.json({ success: true, alertsSent });
 });
 
 /**
