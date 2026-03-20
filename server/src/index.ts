@@ -6,6 +6,7 @@ import configRouter from './routes/config';
 import healthRouter from './routes/health';
 import budgetRouter from './routes/budget';
 import expenseRouter from './routes/expense';
+import resetRouter from './routes/reset';
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
@@ -18,6 +19,7 @@ app.use('/api/config', configRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/budget', budgetRouter);
 app.use('/api/expense', expenseRouter);
+app.use('/api/reset', resetRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 

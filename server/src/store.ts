@@ -135,6 +135,14 @@ export function deleteExpenseById(id: string): boolean {
   return true;
 }
 
+export function resetSpending(): void {
+  _store.totalSpent = 0;
+  _store.firedThresholds = [];
+  _store.expenses = [];
+  _store.periodStart = currentPeriod();
+  save(_store);
+}
+
 export function getAllExpenses(): ServerExpense[] {
   return _store.expenses ?? [];
 }
